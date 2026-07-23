@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { logoUrl } from '../lib/themes'
+import { logoUrl, fetchFacility } from '../lib/themes'
 
 export default function Login() {
   const { signIn, signUp, user, isMaster, portalIds } = useAuth()
@@ -16,11 +16,13 @@ export default function Login() {
   const [err, setErr] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const [facility, setFacility] = useState(null)
 
   useEffect(() => {
     supabase.from('portals').select('id,name,slug,accent_color,logo_letter,logo_path')
       .eq('is_active', true).order('name')
       .then(({ data }) => setPortals(data ?? []))
+    fetchFacility(supabase).then(setFacility)
   }, [])
 
   // Already signed in → route to the right home.
@@ -44,11 +46,18 @@ export default function Login() {
     if (mode === 'signup') setNote('Account created. Check your email if confirmation is required, then sign in.')
   }
 
+  const facilityLogo = facility?.logo_path ? logoUrl(supabase, facility.logo_path) : null
+
   return (
-    <div className="login-wrap">
+    <div className="login-wrap" data-style={facility?.style || 'minimalist'}>
       <div className="login-card">
-        <div className="login-logo"><div className="logo">S</div><div className="nm">Stall'd</div></div>
-        <div className="login-sub">Stall reservations · Sandoval Ranch Arena</div>
+        <div className="login-logo">
+          {facilityLogo
+            ? <img className="logo logo-img" src={facilityLogo} alt="" />
+            : <div className="logo">S</div>}
+          <div className="nm">Stall'd</div>
+        </div>
+        <div className="login-sub">Stall reservations · {facility?.name ?? 'Sandoval Ranch Arena'}</div>
         <div className="card">
           {err && <div className="error-note">{err}</div>}
           {note && <div className="ok-note">{note}</div>}
