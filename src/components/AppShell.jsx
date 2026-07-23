@@ -43,6 +43,7 @@ export default function AppShell({ children }) {
         { to: '/master', icon: Icon.home, label: 'Portals', end: true },
         { to: '/master/barns', icon: Icon.grid, label: 'Barns & stalls' },
         { to: '/master/addons', icon: Icon.list, label: 'Add-ons' },
+        { to: '/master/people', icon: Icon.people, label: 'People & roles' },
         { to: '/master/vet-report', icon: Icon.doc, label: 'Vet report' }
       ]
 
