@@ -2,6 +2,8 @@ import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { usePortal } from '../context/PortalContext'
 import { initials } from '../lib/format'
+import { supabase } from '../lib/supabase'
+import { logoUrl } from '../lib/themes'
 
 const Icon = {
   home: <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9v11h14V9" /></svg>,
@@ -28,14 +30,18 @@ export default function AppShell({ children }) {
           : [])
       ]
     : [
-        { to: '/master', icon: Icon.home, label: 'Portals', end: true }
+        { to: '/master', icon: Icon.home, label: 'Portals', end: true },
+        { to: '/master/barns', icon: Icon.grid, label: 'Barns & stalls' },
+        { to: '/master/addons', icon: Icon.list, label: 'Add-ons' }
       ]
 
   return (
     <div className="shell">
       <aside className="sidebar">
         <Link to={portal ? base : '/master'} className="brandmark">
-          <div className="logo">{portal ? (portal.logo_letter ?? portal.name[0]) : 'S'}</div>
+          {portal && portal.logo_path
+            ? <img className="logo logo-img" src={logoUrl(supabase, portal.logo_path)} alt="" />
+            : <div className="logo">{portal ? (portal.logo_letter ?? portal.name[0]) : 'S'}</div>}
           <div>
             <div className="name">{portal ? portal.name : "Stall'd"}</div>
             <div className="sub">{portal ? 'Sandoval Ranch Arena' : 'Master console'}</div>

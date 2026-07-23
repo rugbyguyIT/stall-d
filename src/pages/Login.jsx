@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { logoUrl } from '../lib/themes'
 
 export default function Login() {
   const { signIn, signUp, user, isMaster, portalIds } = useAuth()
@@ -17,7 +18,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    supabase.from('portals').select('id,name,slug,accent_color,logo_letter')
+    supabase.from('portals').select('id,name,slug,accent_color,logo_letter,logo_path')
       .eq('is_active', true).order('name')
       .then(({ data }) => setPortals(data ?? []))
   }, [])
@@ -75,7 +76,9 @@ export default function Login() {
               <div className="portal-pick">
                 {portals.map((p) => (
                   <button key={p.id} className="row" onClick={() => navigate(`/portal/${p.slug}`)}>
-                    <div className="sw" style={{ background: p.accent_color }}>{p.logo_letter ?? p.name[0]}</div>
+                    {p.logo_path
+                      ? <img className="sw sw-img" src={logoUrl(supabase, p.logo_path)} alt="" />
+                      : <div className="sw" style={{ background: p.accent_color }}>{p.logo_letter ?? p.name[0]}</div>}
                     <div><div className="nm">{p.name}</div><div className="sl">/portal/{p.slug}</div></div>
                   </button>
                 ))}

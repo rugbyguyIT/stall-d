@@ -5,6 +5,9 @@ import { PortalProvider } from './context/PortalContext'
 import Protected from './components/Protected'
 import Login from './pages/Login'
 import MasterDashboard from './pages/master/MasterDashboard'
+import Barns from './pages/master/Barns'
+import AddOns from './pages/master/AddOns'
+import Allocate from './pages/master/Allocate'
 import PortalDashboard from './pages/portal/PortalDashboard'
 import Reservations from './pages/portal/Reservations'
 import ReservationForm from './pages/portal/ReservationForm'
@@ -39,6 +42,9 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/master" element={<Protected requireMaster><MasterDashboard /></Protected>} />
+      <Route path="/master/barns" element={<Protected requireMaster><Barns /></Protected>} />
+      <Route path="/master/addons" element={<Protected requireMaster><AddOns /></Protected>} />
+      <Route path="/master/portals/:portalId/allocate" element={<Protected requireMaster><Allocate /></Protected>} />
       {/* TV board: no sign-in — authorized by the per-portal display key. */}
       <Route path="/portal/:slug/display" element={<DisplayBoard />} />
       <Route path="/portal/:slug" element={<PortalProvider><PortalOutletRoutes /></PortalProvider>}>
