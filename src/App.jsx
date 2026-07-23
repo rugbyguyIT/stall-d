@@ -8,8 +8,10 @@ import MasterDashboard from './pages/master/MasterDashboard'
 import Barns from './pages/master/Barns'
 import AddOns from './pages/master/AddOns'
 import Allocate from './pages/master/Allocate'
+import EventsAdmin from './pages/master/EventsAdmin'
 import PortalDashboard from './pages/portal/PortalDashboard'
 import Reservations from './pages/portal/Reservations'
+import EventView from './pages/portal/EventView'
 import ReservationForm from './pages/portal/ReservationForm'
 import ContestantProfile from './pages/portal/ContestantProfile'
 import PortalUsers from './pages/portal/PortalUsers'
@@ -47,14 +49,16 @@ export default function App() {
       <Route path="/master/barns" element={<Protected requireMaster><Barns /></Protected>} />
       <Route path="/master/addons" element={<Protected requireMaster><AddOns /></Protected>} />
       <Route path="/master/portals/:portalId/allocate" element={<Protected requireMaster><Allocate /></Protected>} />
+      <Route path="/master/portals/:portalId/events" element={<Protected requireMaster><EventsAdmin /></Protected>} />
       <Route path="/master/vet-report" element={<Protected requireMaster><VetReport /></Protected>} />
       {/* TV board: no sign-in — authorized by the per-portal display key. */}
       <Route path="/portal/:slug/display" element={<DisplayBoard />} />
       <Route path="/portal/:slug" element={<PortalProvider><PortalOutletRoutes /></PortalProvider>}>
         <Route index element={<Protected><PortalDashboard /></Protected>} />
         <Route path="reservations" element={<Protected><Reservations /></Protected>} />
-        <Route path="reserve" element={<Protected><ReservationForm /></Protected>} />
-        <Route path="reserve/:reservationId" element={<Protected><ReservationForm /></Protected>} />
+        <Route path="events/:eventId" element={<Protected><EventView /></Protected>} />
+        <Route path="events/:eventId/reserve" element={<Protected><ReservationForm /></Protected>} />
+        <Route path="events/:eventId/reserve/:reservationId" element={<Protected><ReservationForm /></Protected>} />
         <Route path="contestants/:contestantId" element={<Protected><ContestantProfile /></Protected>} />
         <Route path="users" element={<Protected><PortalUsers /></Protected>} />
         <Route path="pricing" element={<Protected><Pricing /></Protected>} />
