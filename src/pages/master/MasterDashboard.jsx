@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import AppShell from '../../components/AppShell'
-import { COLOR_SCHEMES, logoUrl } from '../../lib/themes'
+import { COLOR_SCHEMES, THEME_STYLES, logoUrl, fetchFacility } from '../../lib/themes'
 import { todayISO } from '../../lib/format'
 
 export default function MasterDashboard() {
@@ -10,13 +10,14 @@ export default function MasterDashboard() {
   const [portals, setPortals] = useState(null)
   const [showNew, setShowNew] = useState(false)
   const [editPortal, setEditPortal] = useState(null)
+  const [showFacility, setShowFacility] = useState(false)
   const [tonight, setTonight] = useState(null)
   const [stallTotal, setStallTotal] = useState(null)
 
   async function load() {
     const { data } = await supabase
       .from('portals')
-      .select('id,name,slug,accent_color,logo_letter,logo_path,theme,is_active,portal_users(count),stall_allocations(count)')
+      .select('id,name,slug,accent_color,logo_letter,logo_path,theme,style,is_active,portal_users(count),stall_allocations(count)')
       .order('created_at')
     setPortals(data ?? [])
     const t = todayISO()
@@ -34,6 +35,7 @@ export default function MasterDashboard() {
       <div className="page-head">
         <div><div className="crumbs">Sandoval Ranch Arena</div><h1>Portals</h1></div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost" onClick={() => setShowFacility(true)}>Facility settings</button>
           <button className="btn btn-ghost" onClick={() => navigate('/master/barns')}>Barns &amp; stalls</button>
           <button className="btn btn-primary" onClick={() => setShowNew(true)}>+ New portal</button>
         </div>
@@ -81,7 +83,102 @@ export default function MasterDashboard() {
 
       {showNew && <PortalModal onClose={() => setShowNew(false)} onSaved={load} />}
       {editPortal && <PortalModal portal={editPortal} onClose={() => setEditPortal(null)} onSaved={load} />}
+      {showFacility && <FacilityModal onClose={() => setShowFacility(false)} />}
     </AppShell>
+  )
+}
+
+/** Master console + login branding: facility name, logo, and theme style. */
+function FacilityModal({ onClose }) {
+  const [facility, setFacility] = useState(null)
+  const [name, setName] = useState('')
+  const [style, setStyle] = useState('minimalist')
+  const [logoPath, setLogoPath] = useState(null)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const fileRef = useRef()
+
+  useEffect(() => {
+    fetchFacility(supabase).then((f) => {
+      setFacility(f); setName(f.name ?? ''); setStyle(f.style ?? 'minimalist'); setLogoPath(f.logo_path ?? null)
+    })
+  }, [])
+
+  async function uploadLogo(file) {
+    setErr('')
+    if (!file || !facility?.id) return
+    if (file.size > 2 * 1024 * 1024) return setErr('Logo must be under 2 MB.')
+    setBusy(true)
+    try {
+      const ext = file.name.split('.').pop().toLowerCase()
+      const path = `facility/${crypto.randomUUID()}.${ext}`
+      const { error: ue } = await supabase.storage.from('portal-logos')
+        .upload(path, file, { contentType: file.type, upsert: true })
+      if (ue) throw ue
+      await supabase.from('properties').update({ logo_path: path }).eq('id', facility.id)
+      setLogoPath(path)
+    } catch (ex) { setErr(ex.message) } finally { setBusy(false) }
+  }
+
+  async function save(e) {
+    e.preventDefault()
+    setErr(''); setBusy(true)
+    const { error } = await supabase.from('properties')
+      .update({ name, style, logo_path: logoPath }).eq('id', facility.id)
+    setBusy(false)
+    if (error) return setErr(error.message)
+    onClose()
+    // reload so the freshly-branded shell/login pick up changes
+    window.location.reload()
+  }
+
+  if (!facility) return null
+
+  return (
+    <div className="modal-back" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <h2>Facility settings</h2>
+        <div className="hint" style={{ marginBottom: 14 }}>Branding for the master console and the login page.</div>
+        {err && <div className="error-note">{err}</div>}
+        <form onSubmit={save}>
+          <div className="field"><label>Facility name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Sandoval Ranch Arena" /></div>
+
+          <div className="field"><label>Logo <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(master console + login)</span></label>
+            <button type="button" className="logo-drop" onClick={() => fileRef.current?.click()}>
+              {logoPath
+                ? <img className="prev" src={logoUrl(supabase, logoPath)} alt="" />
+                : <span className="sw" style={{ width: 44, height: 44, borderRadius: 8, background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>S</span>}
+              <span className="hint">{busy ? 'Uploading…' : logoPath ? 'Replace logo' : 'Upload the facility logo'}</span>
+            </button>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden
+              onChange={(e) => { uploadLogo(e.target.files[0]); e.target.value = '' }} />
+          </div>
+
+          <div className="field"><label>Theme style</label>
+            <StylePicker value={style} onChange={setStyle} /></div>
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save facility settings'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+/** Shared 4-option theme-style picker with mini swatches. */
+function StylePicker({ value, onChange }) {
+  return (
+    <div className="style-grid">
+      {THEME_STYLES.map((s) => (
+        <button type="button" key={s.key} className={'style-opt' + (value === s.key ? ' on' : '')} onClick={() => onChange(s.key)}>
+          <span className="nm">{s.name}</span>
+          <span className="sw-row">{s.swatches.map((c, i) => <i key={i} style={{ background: c }} />)}</span>
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -92,6 +189,7 @@ function PortalModal({ portal, onClose, onSaved }) {
   const [slug, setSlug] = useState(portal?.slug ?? '')
   const [accent, setAccent] = useState(portal?.accent_color ?? COLOR_SCHEMES[0].accent)
   const [theme, setTheme] = useState(portal?.theme ?? COLOR_SCHEMES[0].name)
+  const [style, setStyle] = useState(portal?.style ?? 'minimalist')
   const [isActive, setIsActive] = useState(portal?.is_active ?? true)
   const [logoPath, setLogoPath] = useState(portal?.logo_path ?? null)
   const [err, setErr] = useState('')
@@ -131,7 +229,7 @@ function PortalModal({ portal, onClose, onSaved }) {
     const { data: props } = await supabase.from('properties').select('id').limit(1)
     if (!props?.length) { setErr('No property row exists yet — create one first (see migration notes).'); return null }
     const { data, error } = await supabase.from('portals')
-      .insert({ property_id: props[0].id, name, slug: slug || autoSlug(name), accent_color: accent, theme })
+      .insert({ property_id: props[0].id, name, slug: slug || autoSlug(name), accent_color: accent, theme, style })
       .select('id').single()
     if (error) { setErr(error.message); return null }
     createdIdRef.current = data.id
@@ -144,7 +242,7 @@ function PortalModal({ portal, onClose, onSaved }) {
     try {
       if (editing) {
         const { error } = await supabase.from('portals')
-          .update({ accent_color: accent, theme, is_active: isActive, logo_path: logoPath })
+          .update({ accent_color: accent, theme, style, is_active: isActive, logo_path: logoPath })
           .eq('id', portal.id)
         if (error) throw error
       } else {
@@ -152,7 +250,7 @@ function PortalModal({ portal, onClose, onSaved }) {
         if (!pid) { setBusy(false); return }
         // apply scheme/logo/active in case ensurePortal ran before edits
         await supabase.from('portals')
-          .update({ accent_color: accent, theme, is_active: isActive, logo_path: logoPath }).eq('id', pid)
+          .update({ accent_color: accent, theme, style, is_active: isActive, logo_path: logoPath }).eq('id', pid)
       }
       onSaved(); onClose()
     } catch (ex) { setErr(ex.message) } finally { setBusy(false) }
@@ -174,7 +272,10 @@ function PortalModal({ portal, onClose, onSaved }) {
             </>
           )}
 
-          <div className="field"><label>Color scheme</label>
+          <div className="field"><label>Theme style</label>
+            <StylePicker value={style} onChange={setStyle} /></div>
+
+          <div className="field"><label>Accent color</label>
             <div className="scheme-grid">
               {COLOR_SCHEMES.map((s) => (
                 <button type="button" key={s.name} className={'scheme' + (accent === s.accent ? ' on' : '')} onClick={() => pickScheme(s)}>

@@ -221,3 +221,57 @@ tbody tr.rowlink:hover{background:#f6f6f3;cursor:pointer}
 .logo-drop{display:flex;align-items:center;gap:12px;border:1px dashed var(--baseline);border-radius:9px;padding:12px;cursor:pointer;background:#fff;width:100%;font-family:inherit}
 .logo-drop:hover{border-color:var(--portal-accent);background:var(--accent-wash)}
 .logo-drop .prev{width:44px;height:44px;border-radius:8px;object-fit:contain;background:#fff;border:1px solid var(--ring);flex:none}
+
+/* ====================================================================
+   THEME STYLES (skins) — set via data-style on a scope wrapper.
+   Each redefines base tokens; all components read the tokens, so the
+   whole UI reskins. Accent (--portal-accent) is a separate axis.
+   minimalist = the :root defaults (no block needed).
+   ==================================================================== */
+
+/* Western — warm earth tones, softer, serif headings */
+[data-style="western"]{
+  --surface:#fbf6ec; --page:#f3ead9;
+  --ink:#3b2a1a; --ink-2:#6b543d; --muted:#977f63;
+  --grid:#e6d9c3; --baseline:#cbb790; --ring:rgba(59,42,26,.14);
+  --radius:8px;
+}
+[data-style="western"] h1,[data-style="western"] h2,[data-style="western"] h3,
+[data-style="western"] .brandmark .name,[data-style="western"] .login-logo .nm{
+  font-family:Georgia,"Times New Roman",serif;letter-spacing:.01em}
+[data-style="western"] .card,[data-style="western"] .tile{box-shadow:0 1px 0 rgba(59,42,26,.05)}
+[data-style="western"] .login-wrap{background:radial-gradient(800px 400px at 70% -10%,#efe0c6 0%,transparent 60%),var(--page)}
+
+/* High contrast — white/black, heavy borders, tight radius (accessibility) */
+[data-style="high-contrast"]{
+  --surface:#ffffff; --page:#ffffff;
+  --ink:#000000; --ink-2:#161616; --muted:#333333;
+  --grid:#111111; --baseline:#000000; --ring:rgba(0,0,0,.85);
+  --radius:4px;
+}
+[data-style="high-contrast"] .card,[data-style="high-contrast"] .tile,
+[data-style="high-contrast"] input,[data-style="high-contrast"] select,
+[data-style="high-contrast"] textarea,[data-style="high-contrast"] .btn-ghost{border-width:2px}
+[data-style="high-contrast"] .sidebar{border-right-width:2px}
+[data-style="high-contrast"] th,[data-style="high-contrast"] td{border-bottom-width:2px}
+[data-style="high-contrast"] .nav-item.active{outline:2px solid var(--ink)}
+[data-style="high-contrast"] .login-wrap{background:#fff}
+
+/* Gray / Blue — cool slate palette */
+[data-style="gray-blue"]{
+  --surface:#ffffff; --page:#eef2f7;
+  --ink:#111827; --ink-2:#374151; --muted:#6b7280;
+  --grid:#dce3ec; --baseline:#aab6c6; --ring:rgba(30,41,59,.12);
+  --radius:10px;
+}
+[data-style="gray-blue"] .sidebar{background:#f4f7fb}
+[data-style="gray-blue"] .login-wrap{background:radial-gradient(800px 400px at 70% -10%,#dbe6f4 0%,transparent 60%),var(--page)}
+
+/* style picker chips (reuse scheme grid look) */
+.style-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.style-opt{border:1px solid var(--ring);border-radius:8px;padding:10px;cursor:pointer;background:#fff;font-family:inherit;text-align:left}
+.style-opt:hover{border-color:var(--baseline)}
+.style-opt.on{outline:2px solid var(--ink);border-color:transparent}
+.style-opt .nm{font-size:12.5px;font-weight:600;display:block}
+.style-opt .sw-row{display:flex;gap:3px;margin-top:6px}
+.style-opt .sw-row i{width:16px;height:16px;border-radius:4px;display:block;border:1px solid rgba(0,0,0,.08)}
