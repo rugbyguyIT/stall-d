@@ -22,7 +22,7 @@ export default function Reservations() {
     if (!portal?.id) return
     let query = supabase
       .from('reservations')
-      .select('id,animal_name,owner_name,check_in,check_out,status,stall_mat,shavings,stalls(name,barn),contestants(id,vet_records(id))')
+      .select('id,animal_name,owner_name,check_in,check_out,status,stalls(name,barns(name)),contestants(id,vet_records(id)),reservation_addons(add_ons(name))')
       .eq('portal_id', portal.id)
       .order('check_in', { ascending: true })
     if (!showCancelled) query = query.neq('status', 'cancelled')
@@ -61,9 +61,9 @@ export default function Reservations() {
                   ? navigate(`/portal/${slug}/contestants/${r.contestants[0].id}`)
                   : navigate(`/portal/${slug}/reserve/${r.id}`)}>
                 <td><b>{r.animal_name}</b><div className="hint">{r.owner_name}</div></td>
-                <td>{r.stalls?.name}{r.stalls?.barn ? <div className="hint">{r.stalls.barn}</div> : null}</td>
+                <td>{r.stalls?.name}{r.stalls?.barns?.name ? <div className="hint">{r.stalls.barns.name}</div> : null}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{range(r.check_in, r.check_out)}</td>
-                <td className="hint">{[r.stall_mat && 'Mat', r.shavings && 'Shavings'].filter(Boolean).join(' · ') || '—'}</td>
+                <td className="hint">{(r.reservation_addons ?? []).map((x) => x.add_ons?.name).filter(Boolean).join(' · ') || '—'}</td>
                 <td>{(r.contestants ?? []).some((c) => c.vet_records?.length)
                   ? <span className="chip chip-good">✓</span>
                   : <span className="chip chip-critical">Missing</span>}</td>
