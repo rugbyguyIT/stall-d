@@ -21,6 +21,7 @@ export default function Barns() {
       .select('id,name,sort_order,stalls(id,name,is_blocked,nightly_rate)')
       .eq('property_id', pid)
       .order('sort_order')
+    // sort stalls naturally within each barn
     ;(data ?? []).forEach((b) => b.stalls?.sort((x, y) => x.name.localeCompare(y.name, undefined, { numeric: true })))
     setBarns(data ?? [])
   }

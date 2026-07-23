@@ -102,26 +102,13 @@ function PortalModal({ portal, onClose, onSaved }) {
 
   function pickScheme(s) { setAccent(s.accent); setTheme(s.name) }
 
-  // Create the portal (used on first save, or lazily when a logo is added to a new one).
-  const createdIdRef = useRef(portal?.id ?? null)
-  async function ensurePortal() {
-    if (createdIdRef.current) return createdIdRef.current
-    const { data: props } = await supabase.from('properties').select('id').limit(1)
-    if (!props?.length) { setErr('No property row exists yet — create one first (see migration notes).'); return null }
-    const { data, error } = await supabase.from('portals')
-      .insert({ property_id: props[0].id, name, slug: slug || autoSlug(name), accent_color: accent, theme })
-      .select('id').single()
-    if (error) { setErr(error.message); return null }
-    createdIdRef.current = data.id
-    return data.id
-  }
-
   async function uploadLogo(file) {
     setErr('')
     if (!file) return
     if (file.size > 2 * 1024 * 1024) return setErr('Logo must be under 2 MB.')
     setBusy(true)
     try {
+      // Need the portal id to key the path; for a new portal, create it first.
       let pid = portal?.id
       if (!pid) {
         pid = await ensurePortal()
@@ -137,6 +124,20 @@ function PortalModal({ portal, onClose, onSaved }) {
     } catch (ex) { setErr(ex.message) } finally { setBusy(false) }
   }
 
+  // Create the portal (used on first save, or lazily when a logo is added to a new one).
+  const createdIdRef = useRef(portal?.id ?? null)
+  async function ensurePortal() {
+    if (createdIdRef.current) return createdIdRef.current
+    const { data: props } = await supabase.from('properties').select('id').limit(1)
+    if (!props?.length) { setErr('No property row exists yet — create one first (see migration notes).'); return null }
+    const { data, error } = await supabase.from('portals')
+      .insert({ property_id: props[0].id, name, slug: slug || autoSlug(name), accent_color: accent, theme })
+      .select('id').single()
+    if (error) { setErr(error.message); return null }
+    createdIdRef.current = data.id
+    return data.id
+  }
+
   async function save(e) {
     e.preventDefault()
     setErr(''); setBusy(true)
@@ -149,6 +150,7 @@ function PortalModal({ portal, onClose, onSaved }) {
       } else {
         const pid = await ensurePortal()
         if (!pid) { setBusy(false); return }
+        // apply scheme/logo/active in case ensurePortal ran before edits
         await supabase.from('portals')
           .update({ accent_color: accent, theme, is_active: isActive, logo_path: logoPath }).eq('id', pid)
       }
