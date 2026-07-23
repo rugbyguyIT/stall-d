@@ -29,12 +29,13 @@ export default function ReservationForm() {
   const [busy, setBusy] = useState(false)
   const [loaded, setLoaded] = useState(!editing)
 
-  // Add-on catalog (master-managed). Include any inactive ones already on this
-  // reservation so an edit doesn't silently drop them.
+  // Add-on catalog with this portal's effective prices (base overlaid with the
+  // portal's own overrides). Include inactive ones already on the reservation.
   useEffect(() => {
-    supabase.from('add_ons').select('id,name,description,price,is_active').order('sort_order')
+    if (!portal?.id) return
+    supabase.rpc('portal_addons', { p_portal_id: portal.id })
       .then(({ data }) => setAddOns(data ?? []))
-  }, [])
+  }, [portal?.id])
 
   // Load existing reservation + its add-ons when editing.
   useEffect(() => {
@@ -91,7 +92,8 @@ export default function ReservationForm() {
       const row = {
         portal_id: portal.id, stall_id: stallId,
         animal_name: animalName, owner_name: ownerName,
-        check_in: from, check_out: to, status
+        check_in: from, check_out: to, status,
+        stall_rate: rate   // snapshot the (marked-up) nightly rate
       }
       if (editing) {
         const { error } = await supabase.from('reservations').update(row).eq('id', reservationId)

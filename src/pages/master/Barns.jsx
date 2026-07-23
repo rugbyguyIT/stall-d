@@ -9,7 +9,8 @@ export default function Barns() {
   const [err, setErr] = useState('')
   const [addingBarn, setAddingBarn] = useState(false)
   const [barnName, setBarnName] = useState('')
-  const [stallModal, setStallModal] = useState(null) // barn object
+  const [stallModal, setStallModal] = useState(null) // barn object (add stalls)
+  const [editStall, setEditStall] = useState(null)   // stall object (edit price/block)
 
   async function load() {
     const { data: props } = await supabase.from('properties').select('id').limit(1)
@@ -37,10 +38,6 @@ export default function Barns() {
     setBarnName(''); setAddingBarn(false); load()
   }
 
-  async function toggleBlock(stall) {
-    await supabase.from('stalls').update({ is_blocked: !stall.is_blocked }).eq('id', stall.id)
-    load()
-  }
 
   return (
     <AppShell>
@@ -84,8 +81,8 @@ export default function Barns() {
             <div className="stall-grid">
               {b.stalls.map((s) => (
                 <button key={s.id} className={'stall ' + (s.is_blocked ? 'blocked' : 'available')}
-                  title={`${s.name} · ${money(s.nightly_rate)}/night · ${s.is_blocked ? 'blocked (click to unblock)' : 'in service (click to block)'}`}
-                  onClick={() => toggleBlock(s)} disabled={false}>
+                  title={`${s.name} · ${money(s.nightly_rate)}/night · click to edit price or block`}
+                  onClick={() => setEditStall(s)}>
                   {s.name}<small>{s.is_blocked ? 'blocked' : money(s.nightly_rate)}</small>
                 </button>
               ))}
@@ -98,7 +95,50 @@ export default function Barns() {
         <AddStallsModal barn={stallModal} existing={stallModal.stalls ?? []}
           onClose={() => setStallModal(null)} onSaved={() => { setStallModal(null); load() }} />
       )}
+      {editStall && (
+        <EditStallModal stall={editStall}
+          onClose={() => setEditStall(null)} onSaved={() => { setEditStall(null); load() }} />
+      )}
     </AppShell>
+  )
+}
+
+function EditStallModal({ stall, onClose, onSaved }) {
+  const [rate, setRate] = useState(String(stall.nightly_rate))
+  const [blocked, setBlocked] = useState(stall.is_blocked)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function save(e) {
+    e.preventDefault()
+    setErr(''); setBusy(true)
+    const { error } = await supabase.from('stalls')
+      .update({ nightly_rate: Number(rate) || 0, is_blocked: blocked }).eq('id', stall.id)
+    setBusy(false)
+    if (error) return setErr(error.message)
+    onSaved()
+  }
+
+  return (
+    <div className="modal-back" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ width: 360 }}>
+        <h2>Stall {stall.name}</h2>
+        {err && <div className="error-note">{err}</div>}
+        <form onSubmit={save}>
+          <div className="field"><label>Base nightly rate</label>
+            <input type="number" min="0" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} autoFocus />
+            <div className="hint">Portals can mark this up for their own reservations.</div></div>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '4px 0 14px' }}>
+            <input type="checkbox" checked={blocked} onChange={(e) => setBlocked(e.target.checked)} style={{ width: 16, height: 16 }} />
+            <span>Blocked (out of service — not assignable or bookable)</span>
+          </label>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
 
