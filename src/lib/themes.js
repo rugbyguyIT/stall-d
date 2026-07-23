@@ -15,8 +15,23 @@ export const COLOR_SCHEMES = [
 export const schemeByAccent = (hex) =>
   COLOR_SCHEMES.find((s) => s.accent.toLowerCase() === (hex || '').toLowerCase())
 
-/** Public URL for a portal logo stored in the public `portal-logos` bucket. */
+// Visual skins (a separate axis from the accent color). "minimalist" is the
+// default look; the others are defined as [data-style] token overrides in CSS.
+export const THEME_STYLES = [
+  { key: 'minimalist',    name: 'Minimalist',    swatches: ['#fcfcfb', '#e1e0d9', '#2a78d6'] },
+  { key: 'western',       name: 'Western',       swatches: ['#f3ead9', '#cbb790', '#8a5a2b'] },
+  { key: 'high-contrast', name: 'High contrast', swatches: ['#ffffff', '#000000', '#2a78d6'] },
+  { key: 'gray-blue',     name: 'Gray / Blue',   swatches: ['#eef2f7', '#aab6c6', '#34406b'] }
+]
+
+/** Public URL for a logo stored in the public `portal-logos` bucket. */
 export function logoUrl(supabase, logoPath) {
   if (!logoPath) return null
   return supabase.storage.from('portal-logos').getPublicUrl(logoPath).data.publicUrl
+}
+
+/** Facility (property) branding — name, logo, style — readable pre-auth. */
+export async function fetchFacility(supabase) {
+  const { data } = await supabase.rpc('facility_branding')
+  return data || { name: 'Sandoval Ranch Arena', logo_path: null, style: 'minimalist' }
 }

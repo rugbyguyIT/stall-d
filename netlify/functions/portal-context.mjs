@@ -16,7 +16,7 @@ export default async (req) => {
 
   const r = await fetch(
     `${SUPABASE_URL}/rest/v1/portals?slug=eq.${slug}&is_active=eq.true` +
-      `&select=id,name,slug,accent_color,logo_letter,logo_path,theme,is_active`,
+      `&select=id,name,slug,accent_color,logo_letter,logo_path,theme,style,is_active`,
     { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
   )
   if (!r.ok) return Response.json({ error: 'Lookup failed' }, { status: 502 })

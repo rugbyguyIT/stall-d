@@ -57,6 +57,7 @@ export function PortalProvider({ children }) {
     <PortalContext.Provider value={value}>
       <div
         className="portal-scope"
+        data-style={portal?.style || 'minimalist'}
         style={{
           '--portal-accent': colors.accent,
           '--accent-wash': colors.wash,

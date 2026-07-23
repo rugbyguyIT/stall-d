@@ -13,6 +13,7 @@ import Reservations from './pages/portal/Reservations'
 import ReservationForm from './pages/portal/ReservationForm'
 import ContestantProfile from './pages/portal/ContestantProfile'
 import PortalUsers from './pages/portal/PortalUsers'
+import Pricing from './pages/portal/Pricing'
 import DisplayBoard from './pages/portal/DisplayBoard'
 
 function Home() {
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="reserve/:reservationId" element={<Protected><ReservationForm /></Protected>} />
         <Route path="contestants/:contestantId" element={<Protected><ContestantProfile /></Protected>} />
         <Route path="users" element={<Protected><PortalUsers /></Protected>} />
+        <Route path="pricing" element={<Protected><Pricing /></Protected>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
