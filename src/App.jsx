@@ -14,6 +14,7 @@ import ReservationForm from './pages/portal/ReservationForm'
 import ContestantProfile from './pages/portal/ContestantProfile'
 import PortalUsers from './pages/portal/PortalUsers'
 import Pricing from './pages/portal/Pricing'
+import VetReport from './pages/VetReport'
 import DisplayBoard from './pages/portal/DisplayBoard'
 
 function Home() {
@@ -46,6 +47,7 @@ export default function App() {
       <Route path="/master/barns" element={<Protected requireMaster><Barns /></Protected>} />
       <Route path="/master/addons" element={<Protected requireMaster><AddOns /></Protected>} />
       <Route path="/master/portals/:portalId/allocate" element={<Protected requireMaster><Allocate /></Protected>} />
+      <Route path="/master/vet-report" element={<Protected requireMaster><VetReport /></Protected>} />
       {/* TV board: no sign-in — authorized by the per-portal display key. */}
       <Route path="/portal/:slug/display" element={<DisplayBoard />} />
       <Route path="/portal/:slug" element={<PortalProvider><PortalOutletRoutes /></PortalProvider>}>
@@ -56,6 +58,7 @@ export default function App() {
         <Route path="contestants/:contestantId" element={<Protected><ContestantProfile /></Protected>} />
         <Route path="users" element={<Protected><PortalUsers /></Protected>} />
         <Route path="pricing" element={<Protected><Pricing /></Protected>} />
+        <Route path="vet-report" element={<Protected><VetReport /></Protected>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

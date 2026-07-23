@@ -20,7 +20,7 @@ export default function Login() {
 
   useEffect(() => {
     supabase.from('portals').select('id,name,slug,accent_color,logo_letter,logo_path')
-      .eq('is_active', true).order('name')
+      .eq('is_active', true).is('archived_at', null).order('name')
       .then(({ data }) => setPortals(data ?? []))
     fetchFacility(supabase).then(setFacility)
   }, [])
