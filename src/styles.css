@@ -207,3 +207,17 @@ tbody tr.rowlink:hover{background:#f6f6f3;cursor:pointer}
 .tv-list .animal{font-size:1.05vw;font-weight:700}
 .tv-list .owner{font-size:.85vw;color:var(--tv-ink-2)}
 .tv-list .dates{font-size:.85vw;color:var(--tv-ink-2);text-align:right;white-space:nowrap}
+
+/* ---------- branding: logo images ---------- */
+.logo-img{object-fit:contain;background:#fff;padding:2px}
+.tv-logo-img{object-fit:contain;background:#fff;padding:.2vw}
+.sw-img{object-fit:contain;background:#fff}
+.scheme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.scheme{display:flex;align-items:center;gap:8px;border:1px solid var(--ring);border-radius:8px;padding:8px 10px;cursor:pointer;background:#fff;font-family:inherit;text-align:left}
+.scheme:hover{border-color:var(--baseline)}
+.scheme.on{outline:2px solid var(--ink);border-color:transparent}
+.scheme .dot{width:20px;height:20px;border-radius:6px;flex:none}
+.scheme .nm{font-size:12.5px;font-weight:600}
+.logo-drop{display:flex;align-items:center;gap:12px;border:1px dashed var(--baseline);border-radius:9px;padding:12px;cursor:pointer;background:#fff;width:100%;font-family:inherit}
+.logo-drop:hover{border-color:var(--portal-accent);background:var(--accent-wash)}
+.logo-drop .prev{width:44px;height:44px;border-radius:8px;object-fit:contain;background:#fff;border:1px solid var(--ring);flex:none}

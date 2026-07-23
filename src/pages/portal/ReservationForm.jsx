@@ -4,10 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { usePortal } from '../../context/PortalContext'
 import AppShell from '../../components/AppShell'
-import { todayISO, addDaysISO, range, nights, money, day } from '../../lib/format'
-
-const MAT_PRICE = 15
-const SHAVINGS_PRICE = 18
+import { todayISO, addDaysISO, nights, money, day } from '../../lib/format'
 
 export default function ReservationForm() {
   const { portal, slug, isPortalAdmin } = usePortal()
@@ -25,31 +22,38 @@ export default function ReservationForm() {
   const [ownerName, setOwnerName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [mat, setMat] = useState(false)
-  const [shavings, setShavings] = useState(false)
   const [status, setStatus] = useState('confirmed')
+  const [addOns, setAddOns] = useState([])              // catalog (active)
+  const [selected, setSelected] = useState(new Set())   // chosen add_on ids
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [loaded, setLoaded] = useState(!editing)
 
-  // Load existing reservation when editing.
+  // Add-on catalog (master-managed). Include any inactive ones already on this
+  // reservation so an edit doesn't silently drop them.
+  useEffect(() => {
+    supabase.from('add_ons').select('id,name,description,price,is_active').order('sort_order')
+      .then(({ data }) => setAddOns(data ?? []))
+  }, [])
+
+  // Load existing reservation + its add-ons when editing.
   useEffect(() => {
     if (!editing || !portal?.id) return
     supabase.from('reservations')
-      .select('*, contestants(id,name,email,phone)')
+      .select('*, contestants(id,name,email,phone), reservation_addons(add_on_id)')
       .eq('id', reservationId).single()
       .then(({ data, error }) => {
         if (error || !data) { setErr('Reservation not found or not accessible.'); setLoaded(true); return }
         setFrom(data.check_in); setTo(data.check_out); setStallId(data.stall_id)
-        setAnimalName(data.animal_name); setOwnerName(data.owner_name)
-        setMat(data.stall_mat); setShavings(data.shavings); setStatus(data.status)
+        setAnimalName(data.animal_name); setOwnerName(data.owner_name); setStatus(data.status)
+        setSelected(new Set((data.reservation_addons ?? []).map((x) => x.add_on_id)))
         const c = data.contestants?.[0]
         if (c) { setEmail(c.email ?? ''); setPhone(c.phone ?? '') }
         setLoaded(true)
       })
   }, [editing, reservationId, portal?.id])
 
-  // Availability for the chosen range.
+  // Availability for the chosen range (only stalls allocated to this portal).
   useEffect(() => {
     if (!portal?.id || !from || !to || from >= to) return
     supabase.rpc('stall_board', { p_portal_id: portal.id, p_from: from, p_to: to })
@@ -61,10 +65,23 @@ export default function ReservationForm() {
     return avail.sort((a, b) => (a.barn ?? '').localeCompare(b.barn ?? '') || a.name.localeCompare(b.name))
   }, [board, stallId])
 
+  const visibleAddOns = addOns.filter((a) => a.is_active || selected.has(a.id))
   const chosen = board.find((s) => s.stall_id === stallId)
   const rate = Number(chosen?.nightly_rate ?? 35)
   const n = from < to ? nights(from, to) : 0
-  const total = n * rate + (mat ? MAT_PRICE : 0) + (shavings ? SHAVINGS_PRICE : 0)
+  const addOnTotal = visibleAddOns.filter((a) => selected.has(a.id)).reduce((s, a) => s + Number(a.price), 0)
+  const total = n * rate + addOnTotal
+
+  const toggle = (id) => setSelected((prev) => {
+    const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s
+  })
+
+  async function syncAddOns(resId) {
+    await supabase.from('reservation_addons').delete().eq('reservation_id', resId)
+    const rows = visibleAddOns.filter((a) => selected.has(a.id))
+      .map((a) => ({ reservation_id: resId, add_on_id: a.id, price_at_booking: Number(a.price) }))
+    if (rows.length) await supabase.from('reservation_addons').insert(rows)
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -74,29 +91,28 @@ export default function ReservationForm() {
       const row = {
         portal_id: portal.id, stall_id: stallId,
         animal_name: animalName, owner_name: ownerName,
-        check_in: from, check_out: to, stall_mat: mat, shavings, status
+        check_in: from, check_out: to, status
       }
-      let resId = reservationId
       if (editing) {
         const { error } = await supabase.from('reservations').update(row).eq('id', reservationId)
         if (error) throw friendly(error)
+        await syncAddOns(reservationId)
         const { data: existing } = await supabase.from('contestants').select('id').eq('reservation_id', reservationId).limit(1)
         if (existing?.length) {
           await supabase.from('contestants').update({ name: ownerName, email: email || null, phone: phone || null }).eq('id', existing[0].id)
         }
+        navigate(`/portal/${slug}`)
       } else {
         const { data, error } = await supabase.from('reservations')
           .insert({ ...row, created_by: user.id }).select('id').single()
         if (error) throw friendly(error)
-        resId = data.id
+        await syncAddOns(data.id)
         const { data: c, error: ce } = await supabase.from('contestants')
-          .insert({ reservation_id: resId, name: ownerName, email: email || null, phone: phone || null, user_id: isPortalAdmin ? null : user.id })
+          .insert({ reservation_id: data.id, name: ownerName, email: email || null, phone: phone || null, user_id: isPortalAdmin ? null : user.id })
           .select('id').single()
         if (ce) throw ce
         navigate(`/portal/${slug}/contestants/${c.id}?new=1`)
-        return
       }
-      navigate(`/portal/${slug}`)
     } catch (ex) { setErr(ex.message) } finally { setBusy(false) }
   }
 
@@ -146,7 +162,7 @@ export default function ReservationForm() {
                     </option>
                   ))}
                 </select>
-                <div className="hint">Only stalls available for the full {n || '…'}-night range are listed.</div></div>
+                <div className="hint">Only stalls assigned to this company for the full {n || '…'}-night range are listed.</div></div>
               {editing && isPortalAdmin && (
                 <div className="field"><label>Status</label>
                   <select value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -174,16 +190,14 @@ export default function ReservationForm() {
             <div className="card" style={{ padding: 20 }}>
               <b style={{ display: 'block', marginBottom: 4 }}>Add-ons</b>
               <div className="hint" style={{ marginBottom: 14 }}>Added to the stall for the full stay.</div>
-              <label className={'addon' + (mat ? ' on' : '')}>
-                <input type="checkbox" checked={mat} onChange={(e) => setMat(e.target.checked)} />
-                <div><b>Stall mat</b><p>4′×6′ rubber mat installed before check-in.</p></div>
-                <span className="price">{money(MAT_PRICE)}</span>
-              </label>
-              <label className={'addon' + (shavings ? ' on' : '')}>
-                <input type="checkbox" checked={shavings} onChange={(e) => setShavings(e.target.checked)} />
-                <div><b>Shavings</b><p>Two bags of pine shavings, restocked on request.</p></div>
-                <span className="price">{money(SHAVINGS_PRICE)}</span>
-              </label>
+              {visibleAddOns.length === 0 && <div className="hint">No add-ons configured. The property admin can add them in the master console.</div>}
+              {visibleAddOns.map((a) => (
+                <label key={a.id} className={'addon' + (selected.has(a.id) ? ' on' : '')}>
+                  <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggle(a.id)} />
+                  <div><b>{a.name}{!a.is_active ? ' (discontinued)' : ''}</b>{a.description ? <p>{a.description}</p> : null}</div>
+                  <span className="price">{money(a.price)}</span>
+                </label>
+              ))}
             </div>
           </div>
 
@@ -193,10 +207,9 @@ export default function ReservationForm() {
               <div className="sumrow"><span>Stall</span><b>{chosen ? `${chosen.name}${chosen.barn ? ` · ${chosen.barn}` : ''}` : '—'}</b></div>
               <div className="sumrow"><span>Dates</span><b>{day(from)} → {day(to)} · {n} night{n === 1 ? '' : 's'}</b></div>
               <div className="sumrow"><span>Stall ({n} × {money(rate)})</span><b>{money(n * rate)}</b></div>
-              <div className="sumrow" style={mat ? {} : { color: 'var(--muted)' }}>
-                <span>Stall mat</span>{mat ? <b>{money(MAT_PRICE)}</b> : <span>—</span>}</div>
-              <div className="sumrow" style={shavings ? {} : { color: 'var(--muted)' }}>
-                <span>Shavings</span>{shavings ? <b>{money(SHAVINGS_PRICE)}</b> : <span>—</span>}</div>
+              {visibleAddOns.filter((a) => selected.has(a.id)).map((a) => (
+                <div className="sumrow" key={a.id}><span>{a.name}</span><b>{money(a.price)}</b></div>
+              ))}
               <div className="sumrow total"><span>Total due at check-in</span><span>{money(total)}</span></div>
               <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 14 }} disabled={busy}>
                 {busy ? 'Saving…' : editing ? 'Save changes' : 'Confirm reservation'}
@@ -212,9 +225,12 @@ export default function ReservationForm() {
 }
 
 function friendly(error) {
-  if (/exclusion constraint/.test(error.message ?? ''))
+  const m = error.message ?? ''
+  if (/exclusion constraint/.test(m))
     return new Error('That stall was just booked for overlapping dates — pick another stall or adjust the dates.')
-  if (/row-level security/.test(error.message ?? ''))
+  if (/not allocated to this company/.test(m))
+    return new Error('That stall is not assigned to this company for those dates. Ask the property admin to assign it, or pick another stall.')
+  if (/row-level security/.test(m))
     return new Error("You don't have permission to do that in this portal.")
   return error
 }
