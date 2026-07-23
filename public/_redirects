@@ -1,6 +1,9 @@
 # Portal context API → serverless function
 /api/portal/*  /.netlify/functions/portal-context  200
 
+# Master-only user administration (create user / reset password) → service-role function
+/api/admin/user  /.netlify/functions/admin-user  200
+
 # SPA fallback: every portal (and app) route serves the shell;
 # React Router resolves /portal/:slug client-side.
 /*  /index.html  200

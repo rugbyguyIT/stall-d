@@ -3,12 +3,14 @@ import { isConfigured } from './lib/supabase'
 import { useAuth } from './context/AuthContext'
 import { PortalProvider } from './context/PortalContext'
 import Protected from './components/Protected'
+import PasswordGate from './components/PasswordGate'
 import Login from './pages/Login'
 import MasterDashboard from './pages/master/MasterDashboard'
 import Barns from './pages/master/Barns'
 import AddOns from './pages/master/AddOns'
 import Allocate from './pages/master/Allocate'
 import EventsAdmin from './pages/master/EventsAdmin'
+import People from './pages/master/People'
 import PortalDashboard from './pages/portal/PortalDashboard'
 import Reservations from './pages/portal/Reservations'
 import EventView from './pages/portal/EventView'
@@ -42,10 +44,12 @@ export default function App() {
     )
   }
   return (
+    <PasswordGate>
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/master" element={<Protected requireMaster><MasterDashboard /></Protected>} />
+      <Route path="/master/people" element={<Protected requireMaster><People /></Protected>} />
       <Route path="/master/barns" element={<Protected requireMaster><Barns /></Protected>} />
       <Route path="/master/addons" element={<Protected requireMaster><AddOns /></Protected>} />
       <Route path="/master/portals/:portalId/allocate" element={<Protected requireMaster><Allocate /></Protected>} />
@@ -66,6 +70,7 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </PasswordGate>
   )
 }
 

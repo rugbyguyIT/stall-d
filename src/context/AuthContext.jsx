@@ -13,13 +13,21 @@ export function AuthProvider({ children }) {
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  const loadProfile = useCallback(async (uid) => {
+    if (!uid) { setProfile(null); return }
+    const { data } = await supabase.from('profiles').select('*').eq('id', uid).single()
+    setProfile(data ?? null)
+  }, [])
+
   useEffect(() => {
-    if (!session?.user) { setProfile(null); return }
     let live = true
+    if (!session?.user) { setProfile(null); return }
     supabase.from('profiles').select('*').eq('id', session.user.id).single()
       .then(({ data }) => { if (live) setProfile(data ?? null) })
     return () => { live = false }
   }, [session?.user?.id])
+
+  const reloadProfile = useCallback(() => loadProfile(session?.user?.id), [loadProfile, session?.user?.id])
 
   const role = jwtClaim(session, 'app_role') ?? profile?.role ?? 'contestant'
   const portalIds = jwtClaim(session, 'portal_ids') ?? []
@@ -38,8 +46,9 @@ export function AuthProvider({ children }) {
   const value = {
     session, user: session?.user ?? null, profile, role, portalIds,
     isMaster: role === 'master_admin',
+    mustChangePassword: Boolean(session?.user && profile?.must_change_password),
     loading: session === undefined,
-    signIn, signUp, signOut
+    signIn, signUp, signOut, reloadProfile
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
