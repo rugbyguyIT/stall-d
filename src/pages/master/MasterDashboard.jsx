@@ -11,13 +11,15 @@ export default function MasterDashboard() {
   const [showNew, setShowNew] = useState(false)
   const [editPortal, setEditPortal] = useState(null)
   const [showFacility, setShowFacility] = useState(false)
+  const [menuFor, setMenuFor] = useState(null)
+  const [showArchived, setShowArchived] = useState(false)
   const [tonight, setTonight] = useState(null)
   const [stallTotal, setStallTotal] = useState(null)
 
   async function load() {
     const { data } = await supabase
       .from('portals')
-      .select('id,name,slug,accent_color,logo_letter,logo_path,theme,style,is_active,portal_users(count),stall_allocations(count)')
+      .select('id,name,slug,accent_color,logo_letter,logo_path,theme,style,is_active,archived_at,portal_users(count),stall_allocations(count)')
       .order('created_at')
     setPortals(data ?? [])
     const t = todayISO()
@@ -30,9 +32,24 @@ export default function MasterDashboard() {
   }
   useEffect(() => { load() }, [])
 
+  async function setActive(p, val) {
+    await supabase.from('portals').update({ is_active: val }).eq('id', p.id); setMenuFor(null); load()
+  }
+  async function archive(p) {
+    if (!confirm(`Archive ${p.name}? It moves out of your active portals list (data is kept, and you can restore it anytime).`)) return
+    await supabase.from('portals').update({ archived_at: new Date().toISOString(), is_active: false }).eq('id', p.id)
+    setMenuFor(null); load()
+  }
+  async function unarchive(p) {
+    await supabase.from('portals').update({ archived_at: null, is_active: true }).eq('id', p.id); load()
+  }
+
+  const active = (portals ?? []).filter((p) => !p.archived_at)
+  const archived = (portals ?? []).filter((p) => p.archived_at)
+
   return (
     <AppShell>
-      <div className="page-head">
+      <div className="page-head" onClick={() => menuFor && setMenuFor(null)}>
         <div><div className="crumbs">Sandoval Ranch Arena</div><h1>Portals</h1></div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost" onClick={() => setShowFacility(true)}>Facility settings</button>
@@ -42,7 +59,7 @@ export default function MasterDashboard() {
       </div>
 
       <div className="tiles">
-        <div className="tile"><div className="k">Active portals</div><div className="v">{portals?.filter((p) => p.is_active).length ?? '—'}</div></div>
+        <div className="tile"><div className="k">Active portals</div><div className="v">{active.filter((p) => p.is_active).length}</div></div>
         <div className="tile"><div className="k">Physical stalls</div><div className="v">{stallTotal ?? '—'}</div>
           <div className="d"><a onClick={() => navigate('/master/barns')} style={{ cursor: 'pointer' }}>manage barns →</a></div></div>
         <div className="tile"><div className="k">Animals on site tonight</div><div className="v">{tonight ?? '—'}</div></div>
@@ -52,14 +69,27 @@ export default function MasterDashboard() {
         <div className="page-loader">Loading…</div>
       ) : (
         <div className="portal-cards">
-          {portals.map((p) => (
+          {active.map((p) => (
             <div className="card pcard" key={p.id}>
               <div className="pcard-top">
                 {p.logo_path
                   ? <img className="sw sw-img" style={{ width: 38, height: 38, borderRadius: 9 }} src={logoUrl(supabase, p.logo_path)} alt="" />
                   : <div className="sw" style={{ background: p.accent_color }}>{p.logo_letter ?? p.name[0]}</div>}
                 <div><h3>{p.name}</h3><div className="slug">/portal/{p.slug}</div></div>
-                {!p.is_active && <span className="chip chip-neutral" style={{ marginLeft: 'auto' }}>Inactive</span>}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {!p.is_active && <span className="chip chip-neutral">Disabled</span>}
+                  <div style={{ position: 'relative' }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setMenuFor(menuFor === p.id ? null : p.id)} aria-label="More">⋯</button>
+                    {menuFor === p.id && (
+                      <span className="card" style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 30, padding: 6, width: 190, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setActive(p, !p.is_active)}>
+                          {p.is_active ? 'Disable (hide from login)' : 'Enable'}
+                        </button>
+                        <button className="btn btn-danger-ghost btn-sm" onClick={() => archive(p)}>Archive</button>
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="pcard-stats">
                 <div><b>{p.stall_allocations?.[0]?.count ?? 0}</b>stall assignments</div>
@@ -78,6 +108,30 @@ export default function MasterDashboard() {
               <div style={{ fontWeight: 600, color: 'var(--ink-2)' }}>Create a new portal</div>
               <div style={{ fontSize: 12 }}>Name, slug, color scheme, logo</div></div>
           </button>
+        </div>
+      )}
+
+      {archived.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <button className="linklike" style={{ fontSize: 13 }} onClick={() => setShowArchived(!showArchived)}>
+            {showArchived ? '▾' : '▸'} Archived portals ({archived.length})
+          </button>
+          {showArchived && (
+            <div className="card" style={{ marginTop: 10 }}>
+              <table>
+                <tbody>
+                  {archived.map((p) => (
+                    <tr key={p.id}>
+                      <td><b>{p.name}</b><div className="hint">/portal/{p.slug}</div></td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => unarchive(p)}>Restore</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

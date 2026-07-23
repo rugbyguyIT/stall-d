@@ -275,3 +275,16 @@ tbody tr.rowlink:hover{background:#f6f6f3;cursor:pointer}
 .style-opt .nm{font-size:12.5px;font-weight:600;display:block}
 .style-opt .sw-row{display:flex;gap:3px;margin-top:6px}
 .style-opt .sw-row i{width:16px;height:16px;border-radius:4px;display:block;border:1px solid rgba(0,0,0,.08)}
+
+/* ---------- print (vet report) ---------- */
+.print-only{display:none}
+@media print{
+  .no-print,.sidebar{display:none !important}
+  .print-only{display:block}
+  .shell{display:block}
+  .main{max-width:none;padding:0}
+  .card{border:none}
+  th,td{padding:6px 8px;font-size:11px}
+  .tiles{margin-bottom:12px}
+  @page{margin:14mm}
+}
