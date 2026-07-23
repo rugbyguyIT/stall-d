@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { usePortal } from '../../context/PortalContext'
 import AppShell from '../../components/AppShell'
 import { day, range, stamp, bytes, initials } from '../../lib/format'
+import { ANIMAL_FIELDS, vetFieldsFor, complianceSummary } from '../../lib/animals'
 
 const ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp,image/heic'
 const MAX_BYTES = 20 * 1024 * 1024
@@ -26,7 +27,7 @@ export default function ContestantProfile() {
   async function load() {
     const { data, error } = await supabase
       .from('contestants')
-      .select('*, reservations(id,animal_name,owner_name,check_in,check_out,status,stalls(name,barns(name)),reservation_addons(add_ons(name)))')
+      .select('*, reservations(id,event_id,animal_name,owner_name,check_in,check_out,status,events(name),stalls(name,barns(name)),reservation_addons(add_ons(name)))')
       .eq('id', contestantId).maybeSingle()
     if (error || !data) { setC(null); return }
     setC(data); setNotes(data.notes ?? '')
@@ -98,6 +99,8 @@ export default function ContestantProfile() {
               <h1>{c.name}</h1>
               <div className="hint">
                 Animal: <b style={{ color: 'var(--ink)' }}>{r?.animal_name}</b>
+                {c.species ? <> · {c.species}</> : null}
+                {r?.events?.name ? <> · {r.events.name}</> : null}
                 {r?.stalls ? <> · Stall {r.stalls.name}{r.stalls.barns?.name ? ` (${r.stalls.barns.name})` : ''}</> : null}
                 {r ? <> · {range(r.check_in, r.check_out)}</> : null}
               </div>
@@ -105,7 +108,7 @@ export default function ContestantProfile() {
           </div>
         </div>
         {r && (
-          <button className="btn btn-ghost" onClick={() => navigate(`/portal/${slug}/reserve/${r.id}`)}>
+          <button className="btn btn-ghost" onClick={() => navigate(`/portal/${slug}/events/${r.event_id}/reserve/${r.id}`)}>
             {isPortalAdmin ? 'Edit reservation' : 'View reservation'}
           </button>
         )}
@@ -125,6 +128,8 @@ export default function ContestantProfile() {
             {records.length ? `${records.length} on file ✓` : 'None on file'}
           </div></div>
       </div>
+
+      <AnimalHealth c={c} />
 
       <div className="two-col">
         <div className="card">
@@ -178,5 +183,39 @@ export default function ContestantProfile() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+function AnimalHealth({ c }) {
+  const vet = c.vet_data || {}
+  const animalRows = ANIMAL_FIELDS.filter((f) => c[f.key] !== null && c[f.key] !== undefined && c[f.key] !== '')
+  const vetRows = (c.species ? vetFieldsFor(c.species) : []).filter((f) => vet[f.key] !== undefined && vet[f.key] !== '')
+  const cs = c.species ? complianceSummary(c.species, vet) : null
+
+  if (!c.species && animalRows.length === 0 && vetRows.length === 0) return null
+
+  return (
+    <div className="card" style={{ padding: 18, marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <b style={{ fontSize: 14 }}>Animal &amp; health details{c.species ? ` · ${c.species}` : ''}</b>
+        {cs && <span className={'chip ' + (cs.ok ? 'chip-good' : 'chip-critical')}>{cs.label}: {cs.value}</span>}
+      </div>
+      <div className="two-col">
+        <div>
+          <div className="hint" style={{ marginBottom: 6 }}>Animal</div>
+          {animalRows.length === 0 && <div className="hint">No animal details recorded.</div>}
+          {animalRows.map((f) => (
+            <div className="sumrow" key={f.key}><span>{f.label}</span><b>{String(c[f.key])}</b></div>
+          ))}
+        </div>
+        <div>
+          <div className="hint" style={{ marginBottom: 6 }}>Health / vet data</div>
+          {vetRows.length === 0 && <div className="hint">No structured vet data entered.</div>}
+          {vetRows.map((f) => (
+            <div className="sumrow" key={f.key}><span>{f.label}</span><b>{String(vet[f.key])}</b></div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }

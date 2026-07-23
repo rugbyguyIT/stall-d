@@ -97,7 +97,7 @@ export default function MasterDashboard() {
               </div>
               <div className="pcard-foot">
                 <button className="btn btn-primary btn-sm" onClick={() => navigate(`/portal/${p.slug}`)}>Open →</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/master/portals/${p.id}/allocate`)}>Assign stalls</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/master/portals/${p.id}/events`)}>Events</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => setEditPortal(p)}>Branding</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/portal/${p.slug}/users`)}>Admins</button>
               </div>
@@ -363,7 +363,7 @@ function PortalModal({ portal, onClose, onSaved }) {
             <button className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save branding' : 'Create portal'}</button>
           </div>
           {!editing && <div className="hint" style={{ marginTop: 10 }}>
-            After creating, use <b>Assign stalls</b> on the portal card to give this company barns or blocks of stalls for their event dates.</div>}
+            After creating, use <b>Events</b> on the portal card to add this company's shows and assign each event its barns or blocks of stalls.</div>}
         </form>
       </div>
     </div>

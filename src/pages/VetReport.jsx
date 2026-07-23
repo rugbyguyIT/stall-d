@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { usePortal } from '../context/PortalContext'
 import AppShell from '../components/AppShell'
 import { range, todayISO, addDaysISO } from '../lib/format'
+import { complianceSummary } from '../lib/animals'
 
 /**
  * Vet compliance report. Works in two contexts:
@@ -19,10 +20,11 @@ export default function VetReport() {
   const [allDates, setAllDates] = useState(false)
   const [rows, setRows] = useState(null)
   const [portalFilter, setPortalFilter] = useState('all')
+  const [eventFilter, setEventFilter] = useState('all')
 
   useEffect(() => {
     let q = supabase.from('reservations')
-      .select('id,animal_name,owner_name,check_in,check_out,status,portals(name,slug),stalls(name,barns(name)),contestants(name,email,phone,vet_records(id,filename,uploaded_at))')
+      .select('id,animal_name,owner_name,check_in,check_out,status,event_id,events(name),portals(name,slug),stalls(name,barns(name)),contestants(name,email,phone,species,breed,sex,birth_year,color,id_number,vet_data,vet_records(id,filename,uploaded_at))')
       .neq('status', 'cancelled')
       .order('check_in', { ascending: true })
     if (portal) q = q.eq('portal_id', portal.id)
@@ -34,33 +36,45 @@ export default function VetReport() {
     () => [...new Set((rows ?? []).map((r) => r.portals?.name).filter(Boolean))].sort(),
     [rows]
   )
+  const eventNames = useMemo(
+    () => [...new Set((rows ?? []).map((r) => r.events?.name).filter(Boolean))].sort(),
+    [rows]
+  )
 
   const view = useMemo(() => {
     const list = (rows ?? []).map((r) => {
+      const c = r.contestants?.[0]
       const recs = (r.contestants ?? []).flatMap((c) => c.vet_records ?? [])
+      const cs = c?.species ? complianceSummary(c.species, c.vet_data) : { label: 'Health cert', value: '—', ok: false }
       return {
         animal: r.animal_name, owner: r.owner_name,
-        portal: r.portals?.name ?? '', stall: r.stalls?.name ?? '',
-        barn: r.stalls?.barns?.name ?? '',
+        species: c?.species ?? '', breed: c?.breed ?? '', sex: c?.sex ?? '',
+        portal: r.portals?.name ?? '', event: r.events?.name ?? '',
+        stall: r.stalls?.name ?? '', barn: r.stalls?.barns?.name ?? '',
         dates: range(r.check_in, r.check_out), status: r.status,
+        compLabel: cs.label, compValue: cs.value, compOk: cs.ok,
         vetCount: recs.length, compliant: recs.length > 0,
         files: recs.map((x) => x.filename).join('; ')
       }
     })
-    return master && portalFilter !== 'all' ? list.filter((r) => r.portal === portalFilter) : list
-  }, [rows, portalFilter, master])
+    return list
+      .filter((r) => !(master && portalFilter !== 'all') || r.portal === portalFilter)
+      .filter((r) => eventFilter === 'all' || r.event === eventFilter)
+  }, [rows, portalFilter, eventFilter, master])
 
   const total = view.length
   const compliant = view.filter((r) => r.compliant).length
   const missing = total - compliant
 
   function downloadCsv() {
-    const cols = ['Animal', 'Owner', ...(master ? ['Portal'] : []), 'Barn', 'Stall', 'Dates', 'Status', 'Vet records', 'Files']
+    const cols = ['Animal', 'Owner', ...(master ? ['Portal'] : []), 'Event', 'Species', 'Breed', 'Sex',
+      'Barn', 'Stall', 'Dates', 'Status', 'Compliance', 'Compliance detail', 'Vet records', 'Files']
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
     const lines = [cols.join(',')]
     for (const r of view) {
-      lines.push([r.animal, r.owner, ...(master ? [r.portal] : []), r.barn, r.stall, r.dates,
-        r.status, r.compliant ? 'On file' : 'MISSING', r.files].map(esc).join(','))
+      lines.push([r.animal, r.owner, ...(master ? [r.portal] : []), r.event, r.species, r.breed, r.sex,
+        r.barn, r.stall, r.dates, r.status, `${r.compLabel}: ${r.compOk ? 'OK' : 'MISSING'}`, r.compValue,
+        r.compliant ? 'On file' : 'MISSING', r.files].map(esc).join(','))
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -95,6 +109,13 @@ export default function VetReport() {
               {portalNames.map((n) => <option key={n} value={n}>{n}</option>)}
             </select></div>
         )}
+        {eventNames.length > 1 && (
+          <div className="field"><label>Event</label>
+            <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
+              <option value="all">All events</option>
+              {eventNames.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select></div>
+        )}
       </div>
 
       {/* print header */}
@@ -113,23 +134,26 @@ export default function VetReport() {
       <div className="card">
         <table>
           <thead><tr>
-            <th>Animal / owner</th>{master && <th>Portal</th>}<th>Stall</th><th>Dates</th><th>Status</th><th>Vet records</th>
+            <th>Animal / owner</th>{master && <th>Portal</th>}<th>Event</th><th>Species</th><th>Stall</th><th>Dates</th><th>Compliance</th><th>Vet records</th>
           </tr></thead>
           <tbody>
             {view.map((r, i) => (
               <tr key={i}>
                 <td><b>{r.animal}</b><div className="hint">{r.owner}</div></td>
                 {master && <td>{r.portal}</td>}
+                <td>{r.event || '—'}</td>
+                <td>{r.species || '—'}{r.breed ? <div className="hint">{r.breed}</div> : null}</td>
                 <td>{r.stall}{r.barn ? <div className="hint">{r.barn}</div> : null}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{r.dates}</td>
-                <td>{r.status.replace('_', ' ')}</td>
+                <td><span className={'chip ' + (r.compOk ? 'chip-good' : 'chip-critical')}>{r.compLabel}</span>
+                  <div className="hint">{r.compValue}</div></td>
                 <td>{r.compliant
                   ? <span className="chip chip-good">{r.vetCount} on file</span>
                   : <span className="chip chip-critical">Missing</span>}</td>
               </tr>
             ))}
-            {rows === null && <tr><td colSpan={master ? 6 : 5} className="hint">Loading…</td></tr>}
-            {rows?.length === 0 && <tr><td colSpan={master ? 6 : 5} className="hint">No reservations in this range.</td></tr>}
+            {rows === null && <tr><td colSpan={master ? 8 : 7} className="hint">Loading…</td></tr>}
+            {rows?.length === 0 && <tr><td colSpan={master ? 8 : 7} className="hint">No reservations in this range.</td></tr>}
           </tbody>
         </table>
       </div>

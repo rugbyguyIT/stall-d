@@ -22,7 +22,7 @@ export default function Reservations() {
     if (!portal?.id) return
     let query = supabase
       .from('reservations')
-      .select('id,animal_name,owner_name,check_in,check_out,status,stalls(name,barns(name)),contestants(id,vet_records(id)),reservation_addons(add_ons(name))')
+      .select('id,event_id,animal_name,owner_name,check_in,check_out,status,events(name),stalls(name,barns(name)),contestants(id,vet_records(id)),reservation_addons(add_ons(name))')
       .eq('portal_id', portal.id)
       .order('check_in', { ascending: true })
     if (!showCancelled) query = query.neq('status', 'cancelled')
@@ -42,7 +42,7 @@ export default function Reservations() {
     <AppShell>
       <div className="page-head">
         <div><div className="crumbs">/portal/{slug}</div><h1>Reservations</h1></div>
-        <button className="btn btn-primary" onClick={() => navigate(`/portal/${slug}/reserve`)}>+ New reservation</button>
+        <button className="btn btn-primary" onClick={() => navigate(`/portal/${slug}`)}>+ New reservation</button>
       </div>
       <div className="rangebar">
         <input placeholder="Search animal, owner, or stall…" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 260 }} />
@@ -53,14 +53,15 @@ export default function Reservations() {
       </div>
       <div className="card">
         <table>
-          <thead><tr><th>Animal / owner</th><th>Stall</th><th>Dates</th><th>Add-ons</th><th>Vet</th><th>Status</th></tr></thead>
+          <thead><tr><th>Animal / owner</th><th>Event</th><th>Stall</th><th>Dates</th><th>Add-ons</th><th>Vet</th><th>Status</th></tr></thead>
           <tbody>
             {(filtered ?? []).map((r) => (
               <tr key={r.id} className="rowlink"
                 onClick={() => r.contestants?.[0]
                   ? navigate(`/portal/${slug}/contestants/${r.contestants[0].id}`)
-                  : navigate(`/portal/${slug}/reserve/${r.id}`)}>
+                  : navigate(`/portal/${slug}/events/${r.event_id}/reserve/${r.id}`)}>
                 <td><b>{r.animal_name}</b><div className="hint">{r.owner_name}</div></td>
+                <td className="hint">{r.events?.name ?? '—'}</td>
                 <td>{r.stalls?.name}{r.stalls?.barns?.name ? <div className="hint">{r.stalls.barns.name}</div> : null}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>{range(r.check_in, r.check_out)}</td>
                 <td className="hint">{(r.reservation_addons ?? []).map((x) => x.add_ons?.name).filter(Boolean).join(' · ') || '—'}</td>
@@ -70,8 +71,8 @@ export default function Reservations() {
                 <td>{STATUS_CHIP[r.status]}</td>
               </tr>
             ))}
-            {rows === null && <tr><td colSpan={6} className="hint">Loading…</td></tr>}
-            {rows?.length === 0 && <tr><td colSpan={6} className="hint">
+            {rows === null && <tr><td colSpan={7} className="hint">Loading…</td></tr>}
+            {rows?.length === 0 && <tr><td colSpan={7} className="hint">
               {isPortalAdmin ? 'No reservations yet.' : 'You have no reservations in this portal yet.'}</td></tr>}
           </tbody>
         </table>
