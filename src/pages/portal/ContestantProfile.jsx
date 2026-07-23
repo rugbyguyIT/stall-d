@@ -26,7 +26,7 @@ export default function ContestantProfile() {
   async function load() {
     const { data, error } = await supabase
       .from('contestants')
-      .select('*, reservations(id,animal_name,owner_name,check_in,check_out,status,stall_mat,shavings,stalls(name,barn))')
+      .select('*, reservations(id,animal_name,owner_name,check_in,check_out,status,stalls(name,barns(name)),reservation_addons(add_ons(name)))')
       .eq('id', contestantId).maybeSingle()
     if (error || !data) { setC(null); return }
     setC(data); setNotes(data.notes ?? '')
@@ -98,7 +98,7 @@ export default function ContestantProfile() {
               <h1>{c.name}</h1>
               <div className="hint">
                 Animal: <b style={{ color: 'var(--ink)' }}>{r?.animal_name}</b>
-                {r?.stalls ? <> · Stall {r.stalls.name}{r.stalls.barn ? ` (${r.stalls.barn})` : ''}</> : null}
+                {r?.stalls ? <> · Stall {r.stalls.name}{r.stalls.barns?.name ? ` (${r.stalls.barns.name})` : ''}</> : null}
                 {r ? <> · {range(r.check_in, r.check_out)}</> : null}
               </div>
             </div>
@@ -115,8 +115,8 @@ export default function ContestantProfile() {
 
       <div className="tiles">
         {r && <div className="tile"><div className="k">Stall</div>
-          <div className="v" style={{ fontSize: 20 }}>{r.stalls?.name ?? '—'}{r.stalls?.barn ? ` · ${r.stalls.barn}` : ''}</div>
-          <div className="d">{[r.stall_mat && 'Mat ✓', r.shavings && 'Shavings ✓'].filter(Boolean).join(' · ') || 'No add-ons'}</div></div>}
+          <div className="v" style={{ fontSize: 20 }}>{r.stalls?.name ?? '—'}{r.stalls?.barns?.name ? ` · ${r.stalls.barns.name}` : ''}</div>
+          <div className="d">{(r.reservation_addons ?? []).map((x) => x.add_ons?.name).filter(Boolean).join(' · ') || 'No add-ons'}</div></div>}
         {r && <div className="tile"><div className="k">Stay</div>
           <div className="v" style={{ fontSize: 20 }}>{day(r.check_in)} → {day(r.check_out)}</div>
           <div className="d">{r.status.replace('_', ' ')}</div></div>}

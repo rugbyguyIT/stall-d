@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { day, range } from '../../lib/format'
+import { logoUrl } from '../../lib/themes'
 
 const REFRESH_MS = 60_000        // re-fetch board data every minute
 const PAGE_MS = 12_000           // rotate assignment-list pages
@@ -90,7 +91,9 @@ export default function DisplayBoard() {
     <div className="tv" style={{ '--tv-accent': accent }}>
       <header className="tv-head">
         <div className="tv-brand">
-          <div className="tv-logo">{data.portal.logo_letter || data.portal.name[0]}</div>
+          {data.portal.logo_path
+            ? <img className="tv-logo tv-logo-img" src={logoUrl(supabase, data.portal.logo_path)} alt="" />
+            : <div className="tv-logo">{data.portal.logo_letter || data.portal.name[0]}</div>}
           <div>
             <div className="tv-title">{data.portal.name}</div>
             <div className="tv-sub">Stall assignments · Sandoval Ranch Arena{demo ? ' · DEMO' : ''}</div>
