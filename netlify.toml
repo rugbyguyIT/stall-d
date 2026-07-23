@@ -1,0 +1,24 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+
+# SPA fallback + API routing also lives in public/_redirects (copied into dist).
+# Environment variables to set in the Netlify UI (Site settings → Environment):
+#   SUPABASE_URL               — your project URL (client + functions)
+#   SUPABASE_ANON_KEY          — anon/public key (client + functions)
+#   SUPABASE_SERVICE_ROLE_KEY  — service role key (functions ONLY; never exposed
+#                                to the client — vite only inlines *_URL/_ANON_KEY
+#                                via envPrefix, and this key is not referenced in src/)
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

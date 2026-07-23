@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+.netlify/
+public/icons/
+.DS_Store
